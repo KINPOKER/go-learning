@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 type Server struct {
@@ -32,14 +33,14 @@ func (server *Server) Start() {
 	// socket listen
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", server.Ip, server.Port))
 	if err != nil {
-		fmt.Printf("server-1 socket listen err:%s \n", err)
+		fmt.Printf("server socket listen err:%s \n", err)
 		return
 	}
 	// socket listener close at last
 	defer func(listener net.Listener) {
 		err := listener.Close()
 		if err != nil {
-			fmt.Printf("server-1 socket listener close err:%s \n", err)
+			fmt.Printf("server socket listener close err:%s \n", err)
 		}
 	}(listener)
 
@@ -49,7 +50,7 @@ func (server *Server) Start() {
 		// accept connection
 		connection, err := listener.Accept()
 		if err != nil {
-			fmt.Printf("server-1 socket accept err:%s \n", err)
+			fmt.Printf("server socket accept err:%s \n", err)
 			continue
 		}
 		// do handler
@@ -58,6 +59,8 @@ func (server *Server) Start() {
 }
 
 func (server *Server) Handler(conn net.Conn) {
+	isConnActive := make(chan bool)
+
 	// 创建当前用户对象
 	user := InitUser(conn)
 	user.login(server)
@@ -81,12 +84,31 @@ func (server *Server) Handler(conn net.Conn) {
 			// 提取用户发送的消息（去掉换行符）
 			msg := string(buf[:length-1])
 			user.handleMessage(server, msg)
+
+			isConnActive <- true
 		}
 	}()
 
-	// 阻塞当前函数
-	//		主要作用为：防止 user 等临时变量被销毁，UserMap中的引用失效
-	select {}
+	for {
+		// select{}可阻塞当前函数，主要作用为：防止 user 等临时变量被销毁，UserMap中的引用失效
+		select {
+		case <-isConnActive:
+			// 只为激活 select，更新下面的定时器，无需执行任何操作
+		case <-time.After(time.Second * 20):
+			user.printMessage("因为长时间未活动，您被踢了 \n")
+
+			// 释放资源
+			close(user.ReceiveChan)
+			err := conn.Close()
+			if err != nil {
+				fmt.Printf("server socket listener close err:%s \n", err)
+			}
+
+			// 退出当前 handler，相当于 runtime.Goexit()
+			return
+		}
+	}
+
 }
 
 func (server *Server) SendMessage(user *User, msg string) {

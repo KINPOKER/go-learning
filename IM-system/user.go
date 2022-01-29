@@ -27,8 +27,7 @@ func InitUser(conn net.Conn) *User {
 }
 
 func (user *User) ListenBroadcastMessage() {
-	for {
-		msg := <-user.ReceiveChan
+	for msg := range user.ReceiveChan {
 		_, err := user.Conn.Write([]byte(msg))
 		if err != nil {
 			fmt.Printf("用户:%s 客户端打印消息失败,消息：%s,error:%s \n", user.Name, msg, err)
