@@ -94,7 +94,7 @@ func (server *Server) Handler(conn net.Conn) {
 		select {
 		case <-isConnActive:
 			// 只为激活 select，更新下面的定时器，无需执行任何操作
-		case <-time.After(time.Second * 20):
+		case <-time.After(time.Minute * time.Duration(userActiveTimeDuration)):
 			user.printMessage("因为长时间未活动，您被踢了 \n")
 
 			// 释放资源
