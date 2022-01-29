@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -66,8 +67,29 @@ func (server *Server) Handler(conn net.Conn) {
 	server.MapLock.Unlock()
 
 	// 广播发送连接成功的消息
-	msg := fmt.Sprintf("连接到 server-1:%s 成功", fmt.Sprintf("%s:%d", server.Ip, server.Port))
+	msg := fmt.Sprintf("连接到 server:%s 成功", fmt.Sprintf("%s:%d", server.Ip, server.Port))
 	server.SendMessage(user, msg)
+
+	// 接受用户发送的消息
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			length, err := conn.Read(buf)
+			if length == 0 {
+				server.SendMessage(user, "断开连接")
+			}
+
+			if err != nil && err != io.EOF {
+				fmt.Printf("Conn read error:%s \n", err)
+				fmt.Printf("server读取user:%s 发送的信息失败 \n", user.Name)
+				return
+			}
+
+			// 提取用户发送的消息（去掉换行符）
+			msg := string(buf[:length-1])
+			server.SendMessage(user, msg)
+		}
+	}()
 
 	// 阻塞当前函数
 	//		主要作用为：防止 user 等临时变量被销毁，UserMap中的引用失效
