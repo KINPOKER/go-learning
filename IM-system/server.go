@@ -90,7 +90,7 @@ func (server *Server) Handler(conn net.Conn) {
 }
 
 func (server *Server) SendMessage(user *User, msg string) {
-	broadcastMsg := "[" + user.Addr + "]" + user.Name + ":" + msg
+	broadcastMsg := "[" + user.Addr + "]" + user.Name + ":" + msg + " \n"
 	server.BroadcastChan <- broadcastMsg
 }
 

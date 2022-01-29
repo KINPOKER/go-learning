@@ -28,7 +28,11 @@ func InitUser(conn net.Conn) *User {
 func (user *User) ListenBroadcastMessage() {
 	for {
 		msg := <-user.ReceiveChan
-		fmt.Printf("用户%s收到来自广播的消息：%s \n", user.Name, msg)
+		_, err := user.Conn.Write([]byte(msg))
+		if err != nil {
+			fmt.Printf("用户:%s 客户端打印消息失败,消息：%s,error:%s \n", user.Name, msg, err)
+			return
+		}
 	}
 }
 
@@ -53,5 +57,21 @@ func (user *User) logout(server *Server) {
 }
 
 func (user *User) handleMessage(server *Server, msg string) {
-	server.SendMessage(user, msg)
+	if msg == "who is online?" {
+		server.MapLock.Lock()
+		for _, curUser := range server.UserMap {
+			user.printMessage("[" + curUser.Addr + "]" + curUser.Name + "在线\n")
+		}
+		server.MapLock.Unlock()
+	} else {
+		server.SendMessage(user, msg)
+	}
+}
+
+func (user *User) printMessage(msg string) {
+	_, err := user.Conn.Write([]byte(msg))
+	if err != nil {
+		fmt.Printf("用户:%s 客户端打印消息失败,消息：%s,error:%s \n", user.Name, msg, err)
+		return
+	}
 }
