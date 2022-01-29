@@ -31,3 +31,27 @@ func (user *User) ListenBroadcastMessage() {
 		fmt.Printf("用户%s收到来自广播的消息：%s \n", user.Name, msg)
 	}
 }
+
+func (user *User) login(server *Server) {
+	// 将其维护到用户表中
+	server.MapLock.Lock()
+	server.UserMap[user.Name] = user
+	server.MapLock.Unlock()
+
+	// 广播发送连接成功的消息
+	msg := fmt.Sprintf("连接到 server:%s 成功", fmt.Sprintf("%s:%d", server.Ip, server.Port))
+	server.SendMessage(user, msg)
+}
+
+func (user *User) logout(server *Server) {
+	// 同步维护用户表
+	server.MapLock.Lock()
+	delete(server.UserMap, user.Name)
+	server.MapLock.Unlock()
+
+	server.SendMessage(user, "断开连接")
+}
+
+func (user *User) handleMessage(server *Server, msg string) {
+	server.SendMessage(user, msg)
+}

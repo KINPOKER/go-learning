@@ -60,15 +60,7 @@ func (server *Server) Start() {
 func (server *Server) Handler(conn net.Conn) {
 	// 创建当前用户对象
 	user := InitUser(conn)
-
-	// 将其维护到用户表中
-	server.MapLock.Lock()
-	server.UserMap[user.Name] = user
-	server.MapLock.Unlock()
-
-	// 广播发送连接成功的消息
-	msg := fmt.Sprintf("连接到 server:%s 成功", fmt.Sprintf("%s:%d", server.Ip, server.Port))
-	server.SendMessage(user, msg)
+	user.login(server)
 
 	// 接受用户发送的消息
 	go func() {
@@ -76,13 +68,7 @@ func (server *Server) Handler(conn net.Conn) {
 		for {
 			length, err := conn.Read(buf)
 			if length == 0 {
-				server.SendMessage(user, "断开连接")
-
-				// 同步维护用户表
-				server.MapLock.Lock()
-				delete(server.UserMap, user.Name)
-				server.MapLock.Unlock()
-
+				user.logout(server)
 				return
 			}
 
@@ -94,7 +80,7 @@ func (server *Server) Handler(conn net.Conn) {
 
 			// 提取用户发送的消息（去掉换行符）
 			msg := string(buf[:length-1])
-			server.SendMessage(user, msg)
+			user.handleMessage(server, msg)
 		}
 	}()
 
