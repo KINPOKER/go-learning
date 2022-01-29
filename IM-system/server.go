@@ -77,6 +77,12 @@ func (server *Server) Handler(conn net.Conn) {
 			length, err := conn.Read(buf)
 			if length == 0 {
 				server.SendMessage(user, "断开连接")
+
+				// 同步维护用户表
+				server.MapLock.Lock()
+				delete(server.UserMap, user.Name)
+				server.MapLock.Unlock()
+
 				return
 			}
 
