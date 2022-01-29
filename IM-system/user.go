@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"strings"
 )
 
 type User struct {
@@ -57,10 +58,28 @@ func (user *User) logout(server *Server) {
 }
 
 func (user *User) handleMessage(server *Server, msg string) {
-	if msg == "who is online?" {
+	onlineUserQueryKey := "who is online?"
+	renameFuncKey := "rename|"
+
+	if msg == onlineUserQueryKey {
 		server.MapLock.Lock()
 		for _, curUser := range server.UserMap {
 			user.printMessage("[" + curUser.Addr + "]" + curUser.Name + "在线\n")
+		}
+		server.MapLock.Unlock()
+	} else if len(msg) > len(renameFuncKey) && strings.HasPrefix(msg, renameFuncKey) {
+		newName := msg[len(renameFuncKey):]
+
+		// 同步维护用户表
+		server.MapLock.Lock()
+		_, ok := server.UserMap[newName]
+		if ok {
+			user.printMessage(fmt.Sprintf("用户名:%s已被使用,请更换后重试\n", newName))
+		} else {
+			delete(server.UserMap, user.Name)
+			user.Name = newName
+			server.UserMap[newName] = user
+			user.printMessage(fmt.Sprintf("用户名成功更换为:%s \n", newName))
 		}
 		server.MapLock.Unlock()
 	} else {
