@@ -59,6 +59,7 @@ func (user *User) logout(server *Server) {
 func (user *User) handleMessage(server *Server, msg string) {
 	onlineUserQueryKey := "who is online?"
 	renameFuncKey := "rename|"
+	privateChatKey := "to|"
 
 	if msg == onlineUserQueryKey {
 		server.MapLock.Lock()
@@ -79,6 +80,20 @@ func (user *User) handleMessage(server *Server, msg string) {
 			user.Name = newName
 			server.UserMap[newName] = user
 			user.printMessage(fmt.Sprintf("用户名成功更换为:%s \n", newName))
+		}
+		server.MapLock.Unlock()
+	} else if len(msg) > len(privateChatKey) && strings.HasPrefix(msg, privateChatKey) {
+		privateChatInfo := strings.Split(msg[len(privateChatKey):], "|")
+		sendToUserName := privateChatInfo[0]
+		msg := privateChatInfo[1]
+
+		server.MapLock.Lock()
+		sendToUser, ok := server.UserMap[sendToUserName]
+		if ok && len(msg) > 0 {
+			sendToUser.printMessage(fmt.Sprintf("用户%s向您发送了一条消息，内容为：%s \n", user.Name, msg))
+			user.printMessage(fmt.Sprintf("您向%s发送消息成功 \n", sendToUser.Name))
+		} else {
+			user.printMessage("您的私聊消息发送失败，请确认发送格式为：to|私聊的用户名|私聊消息内容 \n")
 		}
 		server.MapLock.Unlock()
 	} else {
