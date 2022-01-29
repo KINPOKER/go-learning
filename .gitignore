@@ -1,5 +1,6 @@
 /.idea
 /IM-system/server-*
+/IM-system/client-*
 /node_modules/
 /package.json
 /package-lock.json
